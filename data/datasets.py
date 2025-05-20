@@ -721,7 +721,7 @@ class VideoDataset(tutils.data.Dataset):
         all_boxes = []
         labels = []
         ego_labels = []
-        mask = np.zeros(self.SEQ_LEN, dtype=np.int)
+        mask = np.zeros(self.SEQ_LEN, dtype=int)
         indexs = []
         for i in range(self.SEQ_LEN):
             indexs.append(frame_num)
@@ -792,7 +792,7 @@ def custum_collate(batch):
             temp_counts.append(bs.shape[0])
         assert seq_len == len(temp_counts)
         counts.append(temp_counts)
-    counts = np.asarray(counts, dtype=np.int)
+    counts = np.asarray(counts, dtype=int)
     new_boxes = torch.zeros(len(boxes), seq_len, max_len, 4)
     new_targets = torch.zeros([len(boxes), seq_len, max_len, num_classes])
     for c1, bs_ in enumerate(boxes):
