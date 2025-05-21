@@ -716,7 +716,7 @@ class VideoDataset(tutils.data.Dataset):
             video_id, start_frame, step_size = id_info
         videoname = self.video_list[video_id]
         images = []
-        frame_num = start_frame
+        frame_num = start_frame + 1 ## start from 1 not 0
         ego_labels = np.zeros(self.SEQ_LEN)-1
         all_boxes = []
         labels = []
