@@ -13,6 +13,7 @@ from models.retinanet import build_retinanet
 from gen_dets import gen_dets, eval_framewise_dets
 from tubes import build_eval_tubes
 from val import val
+from concept_extractor import add_concept_extraction_mode
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -280,6 +281,9 @@ def main():
         eval_framewise_dets(args, val_dataset)
     elif args.MODE == 'eval_tubes':
         build_eval_tubes(args, val_dataset)
+    elif args.MODE == 'extract_concepts':
+        if add_concept_extraction_mode(args):
+            return  # Concept extraction completed
     
 
 if __name__ == "__main__":
