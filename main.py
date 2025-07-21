@@ -190,7 +190,7 @@ def main():
     logger = utils.get_logger(__name__)
     logger.info(sys.version)
 
-    assert args.MODE in ['train','val','gen_dets','eval_frames', 'eval_tubes'], 'MODE must be from ' + ','.join(['train','test','tubes'])
+    assert args.MODE in ['train','val','gen_dets','eval_frames', 'eval_tubes', 'extract_concepts'], 'MODE must be from ' + ','.join(['train','test','tubes'])
 
     if args.MODE == 'train':
         args.TEST_SEQ_LEN = args.SEQ_LEN
