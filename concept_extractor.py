@@ -37,11 +37,15 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     )
     
     # Load trained model weights
-    for epoch in args.EVAL_EPOCHS:
+    '''for epoch in args.EVAL_EPOCHS:
         args.MODEL_PATH = args.SAVE_ROOT + 'model_{:06d}.pth'.format(epoch)
         net.load_state_dict(torch.load(args.MODEL_PATH))
         logger.info('Loaded model from %s' % args.MODEL_PATH)
-        break  # Use the first (likely best) epoch
+        break  # Use the first (likely best) epoch'''
+    epoch = args.EVAL_EPOCHS
+    args.MODEL_PATH = args.MODEL_PATH + 'model_{:06d}.pth'.format(epoch)
+    net.load_state_dict(torch.load(args.MODEL_PATH))
+    logger.info('Loaded model from %s' % args.MODEL_PATH)
     
     concept_save_dir = os.path.join(output_dir, "concepts")
     os.makedirs(concept_save_dir, exist_ok=True)
