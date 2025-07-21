@@ -379,7 +379,9 @@ class VideoDataset(tutils.data.Dataset):
         self._imgpath = os.path.join(self.root, self.input_type)
         self.anno_root = self.root
         if len(args.ANNO_ROOT)>1:
-            self.anno_root = args.ANNO_ROOT 
+            self.anno_root = args.ANNO_ROOT
+
+        self.MODE = args.MODE 
 
         # self.image_sets = image_sets
         self.transform = transform
@@ -389,9 +391,11 @@ class VideoDataset(tutils.data.Dataset):
         elif self.DATASET == 'ucf24':
             self._make_lists_ucf24() 
         elif self.DATASET == 'ava':
-            self._make_lists_ava() 
+            self._make_lists_ava()
+        elif self.DATASET == 'comma' and self.MODE == 'extract_concepts':
+            self._make_lists_comma()
         else:
-            raise Exception('Specfiy corect dataset')
+            raise Exception('Specfiy correct dataset')
         
         self.num_label_types = len(self.label_types)
 
@@ -704,7 +708,47 @@ class VideoDataset(tutils.data.Dataset):
         self.childs = {'duplex_childs':final_annots['duplex_childs'], 'triplet_childs':final_annots['triplet_childs']}
         self.num_videos = len(self.video_list)
         self.print_str = ptrstr
+
+    
+    def _make_lists_comma(self):
+        self.label_types = []  # No labels
+        self.num_classes = 0
+        self.num_classes_list = []
+        self.num_ego_classes = 0
+
+        self.video_list = []
+        self.numf_list = []
+        self.frame_level_list = []
+
+        video_dir = os.path.join(self.root, self.input_type)  # e.g., 'comma/rgb-images'
+        video_folders = sorted(os.listdir(video_dir))
         
+        for vid in video_folders:
+            frame_folder = os.path.join(video_dir, vid)
+            if not os.path.isdir(frame_folder):
+                continue
+            frame_files = sorted([f for f in os.listdir(frame_folder) if f.endswith('.jpg') or f.endswith('.png')])
+            num_frames = len(frame_files)
+
+            self.video_list.append(vid)
+            self.numf_list.append(num_frames)
+
+            # Create dummy annotation structure (empty, since no labels)
+            self.frame_level_list.append([
+                {'labeled': False, 'ego_label': -1, 'boxes': np.asarray([]), 'labels': np.asarray([])}
+                for _ in range(num_frames)
+            ])
+
+            start_frames = list(range(0, num_frames - self.MIN_SEQ_STEP * self.SEQ_LEN, self.skip_step))
+            for frame_num in start_frames:
+                step_list = [s for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1) if num_frames - s * self.SEQ_LEN >= frame_num]
+                for s in step_list[:self.num_steps]:
+                    video_id = self.video_list.index(vid)
+                    self.ids.append([video_id, frame_num, s])
+
+        self.print_str = f"Comma dataset loaded. Number of videos: {len(self.video_list)}, ids: {len(self.ids)}"
+
+            
     def __len__(self):
         return len(self.ids)
 
@@ -750,6 +794,15 @@ class VideoDataset(tutils.data.Dataset):
         height, width = clip.shape[-2:]
         wh = [height, width]
         # print('image', wh)
+
+        if self.DATASET == 'comma' and self.MODE == 'extract_concepts':
+            gt_boxes = [torch.zeros((0, 4), dtype=torch.float32) for _ in range(self.SEQ_LEN)]
+            gt_targets = [torch.zeros((0, self.num_classes), dtype=torch.float32) for _ in range(self.SEQ_LEN)]
+            ego_label_tensor = torch.zeros((self.SEQ_LEN, self.num_ego_classes), dtype=torch.float32) if self.num_ego_classes > 0 else torch.empty((self.SEQ_LEN, 0))
+            return clip, gt_boxes, gt_targets, ego_label_tensor, index, wh, self.num_classes
+
+
+
         if self.ANCHOR_TYPE == 'RETINA':
             for bb, boxes in enumerate(all_boxes):
                 if boxes.shape[0]>0:
@@ -809,3 +862,37 @@ def custum_collate(batch):
     # print(images.shape)
     return images, new_boxes, new_targets, torch.stack(ego_targets,0), \
             torch.LongTensor(counts), image_ids, torch.stack(whs,0)
+
+
+def custom_collate_comma(batch):
+    images = []
+    boxes = []
+    targets = []
+    ego_targets = []
+    image_ids = []
+    whs = []
+    num_classes = None
+
+    for sample in batch:
+        images.append(sample[0])                          # clip
+        boxes.append(sample[1])                           # list of empty tensors per frame
+        targets.append(sample[2])                         # list of empty tensors per frame
+        ego_targets.append(sample[3])                     # tensor (SEQ_LEN, num_ego_classes)
+        image_ids.append(sample[4])                       # index
+        whs.append(torch.tensor(sample[5], dtype=torch.long))  # (height, width)
+        num_classes = sample[6]
+
+    batch_size = len(batch)
+    seq_len = len(boxes[0])
+    new_boxes = torch.zeros((batch_size, seq_len, 1, 4), dtype=torch.float32)  # empty padded
+    new_targets = torch.zeros((batch_size, seq_len, 1, num_classes), dtype=torch.float32)
+    counts = np.zeros((batch_size, seq_len), dtype=int)
+
+    # Ego labels
+    ego_targets_tensor = torch.stack([e.float() for e in ego_targets], dim=0)
+
+    # Images (you may resize/stack as needed here)
+    images = get_clip_list_resized(images)
+
+    return images, new_boxes, new_targets, ego_targets_tensor, \
+           torch.LongTensor(counts), image_ids, torch.stack(whs, 0)

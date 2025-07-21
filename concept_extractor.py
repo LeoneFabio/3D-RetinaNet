@@ -11,7 +11,7 @@ import torch
 import numpy as np
 import pickle
 import torch.utils.data as data_utils
-from data import custum_collate
+from data import custom_collate_comma
 from modules import utils
 
 logger = utils.get_logger(__name__)
@@ -33,7 +33,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     net.eval()
     val_data_loader = data_utils.DataLoader(
         val_dataset, int(args.TEST_BATCH_SIZE), num_workers=args.NUM_WORKERS,
-        shuffle=False, pin_memory=True, collate_fn=custum_collate
+        shuffle=False, pin_memory=True, collate_fn=custom_collate_comma
     )
     
     # Load trained model weights
@@ -43,7 +43,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         logger.info('Loaded model from %s' % args.MODEL_PATH)
         break  # Use the first (likely best) epoch'''
     epoch = args.EVAL_EPOCHS
-    args.MODEL_PATH = args.MODEL_PATH + 'model_{:06d}.pth'.format(epoch)
+    args.MODEL_PATH = args.SAVE_ROOT + 'model_{:06d}.pth'.format(epoch)
     net.load_state_dict(torch.load(args.MODEL_PATH))
     logger.info('Loaded model from %s' % args.MODEL_PATH)
     
