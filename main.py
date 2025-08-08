@@ -249,9 +249,10 @@ def main():
     # one for objectness
     args.label_types = val_dataset.label_types
     args.num_label_types = val_dataset.num_label_types
+   
     ############################################################## REVIEW HERE ##############################################################
-    ###if args.MODE != 'extract_concepts':
-    # --> NO NEED IN COMMA
+    ##if args.MODE != 'extract_concepts':
+        # --> NO NEED IN COMMA
     args.all_classes =  val_dataset.all_classes 
     args.num_classes_list = val_dataset.num_classes_list 
     args.num_ego_classes = val_dataset.num_ego_classes 
