@@ -42,7 +42,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         net.load_state_dict(torch.load(args.MODEL_PATH))
         logger.info('Loaded model from %s' % args.MODEL_PATH)
         break  # Use the first (likely best) epoch'''
-    epoch = args.EVAL_EPOCHS
+    epoch =  int(args.EVAL_EPOCHS)
     args.MODEL_PATH = args.SAVE_ROOT + 'model_{:06d}.pth'.format(epoch)
     net.load_state_dict(torch.load(args.MODEL_PATH))
     logger.info('Loaded model from %s' % args.MODEL_PATH)
