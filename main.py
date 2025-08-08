@@ -249,12 +249,14 @@ def main():
     # one for objectness
     args.label_types = val_dataset.label_types
     args.num_label_types = val_dataset.num_label_types
-    if args.MODE != 'extract_concepts':
-        # --> NO NEED IN COMMA
-        args.all_classes =  val_dataset.all_classes 
-        args.num_classes_list = val_dataset.num_classes_list 
-        args.num_ego_classes = val_dataset.num_ego_classes 
-        args.ego_classes = val_dataset.ego_classes 
+    ############################################################## REVIEW HERE ##############################################################
+    ###if args.MODE != 'extract_concepts':
+    # --> NO NEED IN COMMA
+    args.all_classes =  val_dataset.all_classes 
+    args.num_classes_list = val_dataset.num_classes_list 
+    args.num_ego_classes = val_dataset.num_ego_classes 
+    args.ego_classes = val_dataset.ego_classes 
+        
     args.head_size = 256
 
     if args.MODE in ['train', 'val','gen_dets']:
@@ -284,7 +286,7 @@ def main():
     elif args.MODE == 'eval_tubes':
         build_eval_tubes(args, val_dataset)
     elif args.MODE == 'extract_concepts':
-        if add_concept_extraction_mode(args):
+        if add_concept_extraction_mode(args, val_dataset):
             return  # Concept extraction completed
     
 

@@ -280,7 +280,7 @@ def replace_clip_with_concepts(gridlock_model, concept_loader):
 
 
 # Modified main function integration
-def add_concept_extraction_mode(args):
+def add_concept_extraction_mode(args, val_dataset):
     """
     Add concept extraction mode to the existing main.py argument parser.
     
@@ -289,9 +289,10 @@ def add_concept_extraction_mode(args):
     
     if args.MODE == 'extract_concepts':
         from models.retinanet import build_retinanet
-        from data import VideoDataset
+        '''from data import VideoDataset
         from torchvision import transforms
         import data.transforms as vtf
+        
         
         # Setup dataset (same as gen_dets)
         val_transform = transforms.Compose([ 
@@ -303,10 +304,12 @@ def add_concept_extraction_mode(args):
         args.SUBSETS = args.TEST_SUBSETS  # Use test subsets for concept extraction
         val_dataset = VideoDataset(args, train=False, transform=val_transform, 
                                  skip_step=args.SEQ_LEN, full_test=True)
-        
+        '''
+
         # Build and load model
         net = build_retinanet(args).cuda()
         if args.MULTI_GPUS:
+            logger.info('\nLets do dataparallel\n')
             net = torch.nn.DataParallel(net)
         
         # Extract concepts
