@@ -419,8 +419,8 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     complete_save_data = {
                         'ego': ego_frame,
                         'main': save_data,  # Contains boxes + confidence + concept logits
-                        'frame_concepts': frame_concept_logits,  # Frame-level aggregated concepts
-                        'raw_concepts': confidence_batch.cpu().numpy()  # Raw per-anchor concepts
+                        #'frame_concepts': frame_concept_logits,  # Frame-level aggregated concepts
+                        #'raw_concepts': confidence_batch.cpu().numpy()  # Raw per-anchor concepts
                     }
                     
                     # Save following gen_dets logic for sequence handling
