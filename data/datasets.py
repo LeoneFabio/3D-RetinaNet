@@ -723,11 +723,14 @@ class VideoDataset(tutils.data.Dataset):
         # Initialize class stats
         self.num_classes = 1  # for agent_ness (presence)
         self.num_classes_list = [1]
-        
+
+        self.concepts_labels = []
+
         for name in self.label_types:
             all_labels = final_annots.get('all_' + name + '_labels', [])
             used_labels = final_annots.get(name + '_labels', [])
             print(f'Used labels for {name}: {used_labels}')
+            self.concepts_labels.extend(used_labels)
             numc = len(used_labels)
             self.num_classes_list.append(numc)
             self.num_classes += numc

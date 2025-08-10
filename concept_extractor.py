@@ -420,6 +420,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         'ego': ego_frame,
                         'main': save_data,  # Contains boxes + confidence + concept logits
                         'video_name': videoname,  # Video name
+                        'concepts': val_dataset.concepts_labels,  # All concepts used in the video
                         #'frame_concepts': frame_concept_logits,  # Frame-level aggregated concepts
                         #'raw_concepts': confidence_batch.cpu().numpy()  # Raw per-anchor concepts
                     }
