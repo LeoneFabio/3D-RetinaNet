@@ -419,6 +419,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     complete_save_data = {
                         'ego': ego_frame,
                         'main': save_data,  # Contains boxes + confidence + concept logits
+                        'video_name': videoname,  # Video name
                         #'frame_concepts': frame_concept_logits,  # Frame-level aggregated concepts
                         #'raw_concepts': confidence_batch.cpu().numpy()  # Raw per-anchor concepts
                     }
@@ -436,8 +437,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
 
 def filter_detections_with_concepts(args, scores, decoded_boxes_batch, confidences):
     """
-    Filter detections and extract concept logits, similar to filter_detections_for_dumping
-    but with added concept extraction functionality.
+    Filter detections and extract concept logits.
     
     Args:
         args: Arguments
@@ -542,8 +542,8 @@ def load_concepts_from_detections(detection_path):
     concepts = {
         'ego_concepts': data['ego'],  # Ego-vehicle actions
         'detection_concepts': None,   # Per-detection concepts
-        'frame_concepts': None,       # Frame-level concepts
-        'raw_concepts': None         # Raw per-anchor concepts
+        #'frame_concepts': None,       # Frame-level concepts
+        #'raw_concepts': None         # Raw per-anchor concepts
     }
     
     # Handle different data formats

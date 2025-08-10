@@ -393,7 +393,7 @@ class VideoDataset(tutils.data.Dataset):
         elif self.DATASET == 'ava':
             self._make_lists_ava()
         elif self.DATASET == 'comma' and self.MODE == 'extract_concepts':
-            self._make_lists_comma_2()
+            self._make_lists_comma()
         else:
             raise Exception('Specfiy correct dataset')
         
@@ -709,46 +709,8 @@ class VideoDataset(tutils.data.Dataset):
         self.num_videos = len(self.video_list)
         self.print_str = ptrstr
 
-    
+
     def _make_lists_comma(self):
-        self.label_types = []  # No labels
-        self.num_classes = 0
-        self.num_classes_list = []
-        self.num_ego_classes = 0
-
-        self.video_list = []
-        self.numf_list = []
-        self.frame_level_list = []
-
-        video_dir = os.path.join(self.root, self.input_type)  # e.g., 'comma/rgb-images'
-        video_folders = sorted(os.listdir(video_dir))
-        
-        for vid in video_folders:
-            frame_folder = os.path.join(video_dir, vid)
-            if not os.path.isdir(frame_folder):
-                continue
-            frame_files = sorted([f for f in os.listdir(frame_folder) if f.endswith('.jpg') or f.endswith('.png')])
-            num_frames = len(frame_files)
-
-            self.video_list.append(vid)
-            self.numf_list.append(num_frames)
-
-            # Create dummy annotation structure (empty, since no labels)
-            self.frame_level_list.append([
-                {'labeled': False, 'ego_label': -1, 'boxes': np.asarray([]), 'labels': np.asarray([])}
-                for _ in range(num_frames)
-            ])
-
-            start_frames = list(range(0, num_frames - self.MIN_SEQ_STEP * self.SEQ_LEN, self.skip_step))
-            for frame_num in start_frames:
-                step_list = [s for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1) if num_frames - s * self.SEQ_LEN >= frame_num]
-                for s in step_list[:self.num_steps]:
-                    video_id = self.video_list.index(vid)
-                    self.ids.append([video_id, frame_num, s])
-
-        self.print_str = f"Comma dataset loaded. Number of videos: {len(self.video_list)}, ids: {len(self.ids)}"
-
-    def _make_lists_comma_2(self):
         # Reuse ROAD annotations to keep label structure consistent
         self.anno_file = os.path.join(self.root, 'road_trainval_v1.0.json')
         
@@ -765,6 +727,7 @@ class VideoDataset(tutils.data.Dataset):
         for name in self.label_types:
             all_labels = final_annots.get('all_' + name + '_labels', [])
             used_labels = final_annots.get(name + '_labels', [])
+            print(f'Used labels for {name}: {used_labels}')
             numc = len(used_labels)
             self.num_classes_list.append(numc)
             self.num_classes += numc
