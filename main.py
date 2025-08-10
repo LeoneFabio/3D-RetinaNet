@@ -284,6 +284,7 @@ def main():
         build_eval_tubes(args, val_dataset)
     elif args.MODE == 'extract_concepts':
         if add_concept_extraction_mode(args, val_dataset):
+            build_eval_tubes(args, val_dataset, evaluate=False)
             return  # Concept extraction completed
     
 

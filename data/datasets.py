@@ -729,7 +729,6 @@ class VideoDataset(tutils.data.Dataset):
         for name in self.label_types:
             all_labels = final_annots.get('all_' + name + '_labels', [])
             used_labels = final_annots.get(name + '_labels', [])
-            print(f'Used labels for {name}: {used_labels}')
             self.concepts_labels.extend(used_labels)
             numc = len(used_labels)
             self.num_classes_list.append(numc)
