@@ -120,12 +120,12 @@ def set_args(args):
         args.MODEL_PATH = args.MODEL_PATH[:-1] if args.MODEL_PATH.endswith('/') else args.MODEL_PATH 
         assert args.MODEL_PATH.endswith('kinetics-pt') or args.MODEL_PATH.endswith('imagenet-pt') 
 
-    args.model_init = 'imagenet' if args.MODEL_PATH.endswith('imagenet-pt') else 'kinetics'
-    
-    if args.MODEL_PATH == 'imagenet':
-        args.MODEL_PATH = os.path.join(args.MODEL_PATH, args.ARCH+'.pth')
-    else:
-        args.MODEL_PATH = os.path.join(args.MODEL_PATH, args.ARCH+args.MODEL_TYPE+'.pth')
+        args.model_init = 'imagenet' if args.MODEL_PATH.endswith('imagenet-pt') else 'kinetics'
+        
+        if args.MODEL_PATH == 'imagenet':
+            args.MODEL_PATH = os.path.join(args.MODEL_PATH, args.ARCH+'.pth')
+        else:
+            args.MODEL_PATH = os.path.join(args.MODEL_PATH, args.ARCH+args.MODEL_TYPE+'.pth')
             
     
     print('Your working directories are::\nLOAD::> ', args.DATA_ROOT, '\nSAVE::> ', args.SAVE_ROOT)
