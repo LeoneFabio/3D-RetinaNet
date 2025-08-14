@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description='Training single stage FPN with OHEM, resnet as backbone')
     parser.add_argument('DATA_ROOT', help='Location to root directory for dataset reading') # /mnt/mars-fast/datasets/
     parser.add_argument('SAVE_ROOT', help='Location to root directory for saving checkpoint models') # /mnt/mars-alpha/
-    parser.add_argument('MODEL_PATH',help='Location to root directory where kinetics pretrained models are stored')
+    parser.add_argument('--MODEL_PATH', default=None, help='Location to root directory where kinetics pretrained models are stored')
     parser.add_argument('--ANNO_ROOT', default='', help='Location to directory where annotations are stored') # /mnt/mars-fast/datasets/
     parser.add_argument('--MODE', default='train',
                         help='MODE can be train, gen_dets, eval_frames, eval_tubes define SUBSETS accordingly, build tubes')
