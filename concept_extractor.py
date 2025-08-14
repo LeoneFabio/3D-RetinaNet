@@ -316,6 +316,7 @@ import numpy as np
 import pickle
 import torch.utils.data as data_utils
 from data import custom_collate_comma
+from data import custum_collate
 from modules import utils
 from modules.box_utils import decode, nms
 
@@ -335,11 +336,12 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     Returns:
         Saves detections + concept logits in gen_dets compatible format
     """
-    
+    collate_fn = custom_collate_comma if args.DATASET == 'comma' else custum_collate
+
     net.eval()
     val_data_loader = data_utils.DataLoader(
         val_dataset, int(args.TEST_BATCH_SIZE), num_workers=args.NUM_WORKERS,
-        shuffle=False, pin_memory=True, collate_fn=custom_collate_comma
+        shuffle=False, pin_memory=True, collate_fn=collate_fn
     )
     
     # Load trained model weights
