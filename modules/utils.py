@@ -118,7 +118,6 @@ def set_args(args):
 
     args.MODEL_PATH = args.MODEL_PATH[:-1] if args.MODEL_PATH.endswith('/') else args.MODEL_PATH 
 
-    assert args.MODEL_PATH.endswith('kinetics-pt') or args.MODEL_PATH.endswith('imagenet-pt') 
     args.model_init = 'imagenet' if args.MODEL_PATH.endswith('imagenet-pt') else 'kinetics'
     
     if args.MODEL_PATH == 'imagenet':
