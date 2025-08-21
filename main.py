@@ -276,8 +276,8 @@ def main():
         val(args, net, val_dataset)
     elif args.MODE == 'gen_dets':
         gen_dets(args, net, val_dataset)
-        #eval_framewise_dets(args, val_dataset)
-        #build_eval_tubes(args, val_dataset)
+        eval_framewise_dets(args, val_dataset)
+        build_eval_tubes(args, val_dataset)
     elif args.MODE == 'eval_frames':
         eval_framewise_dets(args, val_dataset)
     elif args.MODE == 'eval_tubes':
