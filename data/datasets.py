@@ -791,7 +791,7 @@ class VideoDataset(tutils.data.Dataset):
         }
         self.num_videos = len(self.video_list)
 
-        logger.info(f"Building IDs with seq_len={self.SEQ_LEN}, skip_beginning={self.skip_beginning}, skip_step={self.skip_step}")
+        logger.info(f"Building IDs with seq_len={self.SEQ_LEN}, skip_step={self.skip_step}")
         logger.info(f"Num frames in {vid} = {num_frames}, start_frames={start_frames[:10]}... total {len(start_frames)}")
 
 
