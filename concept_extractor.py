@@ -31,7 +31,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         output_dir: Directory to save concept representations
     
     Returns:
-        Saves detections + concept logits in gen_dets compatible format
+        Saves detections + concept logits in gen_dets compatible format + per batch logits
     """
     collate_fn = custom_collate_comma if args.DATASET == 'comma' else custum_collate
 
