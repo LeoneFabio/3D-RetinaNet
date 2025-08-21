@@ -52,6 +52,13 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         it=epoch, sq=args.TEST_SEQ_LEN))
     os.makedirs(concept_save_dir, exist_ok=True)
     logger.info('Concept extraction saving dir: ' + concept_save_dir)
+
+
+    # Setup batch concept tensors save directory
+    batch_concepts_dir = os.path.join(output_dir, "batch_concepts-{it:02d}-{sq:02d}/".format(
+        it=epoch, sq=args.TEST_SEQ_LEN))
+    os.makedirs(batch_concepts_dir, exist_ok=True)
+    logger.info('Batch concept tensors saving dir: ' + batch_concepts_dir)
     
     activation = torch.nn.Sigmoid().cuda()
     
@@ -70,7 +77,16 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             ego_probs = activation(ego_preds)   # [batch, seq_len, num_ego_classes]
             
             seq_len = ego_probs.shape[1]
+            num_concepts = confidence.shape[-1]
+
+            logger.info(f'Concept extraction in progress, with {num_concepts} concepts, {batch_size} batches and {seq_len} sequence length.')
+
+            # Initialize batch-level concept tensor
+            batch_concept_logits = torch.zeros(batch_size, seq_len, num_concepts, device=images.device)
             
+            # Collect video information for this batch
+            batch_video_info = []
+
             # Process each sample in the batch
             for b in range(batch_size):
                 index = img_indexs[b]
@@ -84,6 +100,11 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 
                 videoname = val_dataset.video_list[video_id]
                 save_dir = '{:s}/{}'.format(concept_save_dir, videoname)
+
+                batch_video_info.append({
+                    'video_name': videoname,
+                    'frame_num': frame_num+1  # so that starts from 1
+                })
                 
                 # Track processed videos for consistency with gen_dets
                 store_last = False
@@ -109,7 +130,10 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     cls_dets, save_data, frame_concept_logits = filter_detections_with_concepts(
                         args, scores, decoded_boxes_batch, confidence_batch
                     )
-                    
+
+                    # Store frame concept logits in batch tensor
+                    batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
+                      
                     # Save in gen_dets format with added concept information
                     save_name = '{:s}/{:05d}.pkl'.format(save_dir, frame_num + 1)
                     frame_num += step_size
@@ -120,8 +144,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         'main': save_data,  # Contains boxes + confidence + concept logits
                         'video_name': videoname,  # Video name
                         'concepts': val_dataset.concepts_labels,  # All concepts used in the video
-                        #'frame_concepts': frame_concept_logits,  # Frame-level aggregated concepts
-                        #'raw_concepts': confidence_batch.cpu().numpy()  # Raw per-anchor concepts
                     }
                     
                     # Save following gen_dets logic for sequence handling
@@ -130,10 +152,23 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                             pickle.dump(complete_save_data, ff)
                 logger.info(f"Saving frame {frame_num+1} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
 
+            # Save batch concept logits tensor
+            batch_save_name = os.path.join(batch_concepts_dir, f'batch_{val_itr:06d}_concepts.pt')
+            torch.save({
+                'concepts': batch_concept_logits.cpu(),  # [batch_size, seq_len, num_concepts]
+                'batch_size': batch_size,
+                'seq_len': seq_len,
+                'num_concepts': num_concepts,
+                'batch_idx': val_itr,
+                'video_info': batch_video_info,  # Detailed info per batch element
+                'unique_videos': list(set([info['video_name'] for info in batch_video_info]))
+            }, batch_save_name)
+
             if val_itr % 10 == 0:
                 logger.info(f'Processed {val_itr + 1} batches')
     
     logger.info(f'Concept extraction completed. Saved to {concept_save_dir}')
+    logger.info(f'Batch concept tensors saved to {batch_concepts_dir}')
 
 
 def filter_detections_with_concepts(args, scores, decoded_boxes_batch, confidences):
@@ -186,158 +221,41 @@ def filter_detections_with_concepts(args, scores, decoded_boxes_batch, confidenc
     save_data = np.hstack((final_boxes, final_confidences)).astype(np.float32)
     
     # Extract frame-level concept representation
-    frame_concept_logits = extract_frame_level_concepts(confidences, c_mask, final_ids)
+    frame_concept_logits = extract_frame_level_concepts(final_confidences)
     
     return cls_dets, save_data, frame_concept_logits
 
 
-def extract_frame_level_concepts(confidences, c_mask, final_ids):
+def extract_frame_level_concepts(final_confidences):
     """
     Extract frame-level concept representation from filtered detections.
     
     Args:
-        confidences: Full confidence tensor [num_anchors, num_classes]
-        c_mask: Confidence mask for filtering
-        final_ids: Final detection IDs after NMS
+        final_confidences: Already filtered confidence tensor [num_final_detections, num_classes]
     
     Returns:
         frame_concepts: Frame-level concept logits [num_classes]
     """
     
-    if len(final_ids) == 0:
-        return np.zeros(confidences.shape[-1])
+    if len(final_confidences) == 0:
+        return np.zeros(final_confidences.shape[-1] if len(final_confidences.shape) > 1 else 0)
     
-    # Get concepts from high-confidence detections
-    high_conf_concepts = confidences[c_mask][final_ids]  # [num_detections, num_classes]
+    # Convert to tensor if it's numpy
+    if isinstance(final_confidences, np.ndarray):
+        final_confidences = torch.from_numpy(final_confidences)
     
-    # Aggregate using max pooling (strongest concept evidence)
-    frame_concepts_max = torch.max(high_conf_concepts, dim=0)[0]
+    # Aggregate using max pooling
+    frame_concepts_max = torch.max(final_confidences, dim=0)[0]
     
-    # Alternative: weighted average by detection confidence
-    detection_weights = torch.softmax(high_conf_concepts.max(dim=1)[0], dim=0)
+    # Alternative: weighted average
+    detection_weights = torch.softmax(final_confidences.max(dim=1)[0], dim=0)
     frame_concepts_weighted = torch.sum(
-        high_conf_concepts * detection_weights.unsqueeze(1), dim=0
+        final_confidences * detection_weights.unsqueeze(1), dim=0
     )
     
-    # Use max pooling as default (can be made configurable)
     frame_concepts = frame_concepts_max.cpu().numpy()
     
     return frame_concepts
-
-
-def load_concepts_from_detections(detection_path):
-    """
-    Load concept representations from saved detection files.
-    Compatible with both gen_dets and concept extraction outputs.
-    
-    Args:
-        detection_path: Path to saved .pkl file
-    
-    Returns:
-        concepts: Dictionary containing different concept representations
-    """
-    
-    with open(detection_path, 'rb') as f:
-        data = pickle.load(f)
-    
-    concepts = {
-        'ego_concepts': data['ego'],  # Ego-vehicle actions
-        'detection_concepts': None,   # Per-detection concepts
-        #'frame_concepts': None,       # Frame-level concepts
-        #'raw_concepts': None         # Raw per-anchor concepts
-    }
-    
-    # Handle different data formats
-    if 'frame_concepts' in data:
-        concepts['frame_concepts'] = data['frame_concepts']
-    
-    if 'raw_concepts' in data:
-        concepts['raw_concepts'] = data['raw_concepts']
-    
-    # Extract concepts from detection data
-    main_data = data['main']
-    if main_data.shape[0] > 0 and main_data.shape[1] > 5:  # Has concept logits
-        concepts['detection_concepts'] = main_data[:, 4:]  # Everything after boxes
-    
-    return concepts
-
-
-def create_gridlock_compatible_loader(concept_dir, sequence_length=8):
-    """
-    Create a concept loader that provides sequences compatible with GridLock,
-    using the detection-based concept extraction format.
-    
-    Args:
-        concept_dir: Directory containing extracted concepts
-        sequence_length: Length of sequences to return
-    
-    Returns:
-        Function that loads concept sequences for GridLock
-    """
-    
-    def load_concept_sequence(videoname, start_frame, step_size=1, aggregation='frame_concepts'):
-        """
-        Load a sequence of concept representations for GridLock.
-        
-        Args:
-            videoname: Video identifier
-            start_frame: Starting frame number  
-            step_size: Frame step size
-            aggregation: Type of concepts to use ('frame_concepts', 'ego_concepts', 'combined')
-        
-        Returns:
-            logits_per_image: [seq_len, num_concepts] - GridLock compatible format
-        """
-        
-        sequence_concepts = []
-        
-        for i in range(sequence_length):
-            frame_num = start_frame + i * step_size
-            detection_path = os.path.join(concept_dir, videoname, f'{frame_num:05d}.pkl')
-            
-            try:
-                concepts = load_concepts_from_detections(detection_path)
-                
-                if aggregation == 'frame_concepts' and concepts['frame_concepts'] is not None:
-                    frame_repr = torch.from_numpy(concepts['frame_concepts'])
-                elif aggregation == 'ego_concepts':
-                    frame_repr = torch.from_numpy(concepts['ego_concepts'])
-                elif aggregation == 'combined':
-                    # Combine frame and ego concepts
-                    frame_c = concepts['frame_concepts'] if concepts['frame_concepts'] is not None else np.array([])
-                    ego_c = concepts['ego_concepts']
-                    if len(frame_c) > 0:
-                        combined = np.concatenate([frame_c, ego_c])
-                    else:
-                        combined = ego_c
-                    frame_repr = torch.from_numpy(combined)
-                else:
-                    # Fallback to ego concepts
-                    frame_repr = torch.from_numpy(concepts['ego_concepts'])
-                
-                sequence_concepts.append(frame_repr)
-                
-            except FileNotFoundError:
-                logger.warning(f"Concepts not found for {videoname} frame {frame_num}")
-                # Use last valid frame or zeros
-                if sequence_concepts:
-                    sequence_concepts.append(sequence_concepts[-1].clone())
-                else:
-                    # Create appropriate zero tensor (size will be determined from first valid frame)
-                    sequence_concepts.append(torch.zeros(1))  # Placeholder
-        
-        if not sequence_concepts:
-            raise ValueError(f"No valid concepts found for {videoname} starting at frame {start_frame}")
-        
-        # Handle placeholder zeros by using first valid frame size
-        concept_size = max(c.numel() for c in sequence_concepts)
-        for i, c in enumerate(sequence_concepts):
-            if c.numel() == 1 and c.item() == 0:  # Placeholder zero
-                sequence_concepts[i] = torch.zeros(concept_size)
-        
-        return torch.stack(sequence_concepts, dim=0)
-    
-    return load_concept_sequence
 
 
 # Modified main function integration
@@ -364,50 +282,3 @@ def add_concept_extraction_mode(args, val_dataset):
         return True  # Indicates concept extraction was performed
     
     return False  # Continue with normal processing
-
-
-# GridLock Integration Helper
-def replace_clip_in_gridlock(concept_loader, scenarios_tokens=None):
-    """
-    Function to replace CLIP forward pass in GridLock with concept extraction.
-    
-    Args:
-        concept_loader: Function that loads concept sequences
-        scenarios_tokens: Not used in our approach (kept for interface compatibility)
-    
-    Returns:
-        Function that mimics CLIP's interface but uses extracted concepts
-    """
-    
-    def concept_forward(img, video_info):
-        """
-        Replacement for CLIP forward pass in GridLock.
-        
-        Args:
-            img: [batch_size, seq_len, h, w, c] - input images  
-            video_info: Dictionary with video/frame information for concept loading
-        
-        Returns:
-            logits_per_image: [batch_size * seq_len, num_concepts] - concept logits
-            logits_per_text: None (we don't use text matching)
-        """
-        
-        batch_size, seq_len = img.shape[:2]
-        
-        logits_list = []
-        for b in range(batch_size):
-            # Extract video information (you'll need to adapt this to your data structure)
-            video_name = video_info['video_names'][b]
-            start_frame = video_info['start_frames'][b]
-            step_size = video_info.get('step_sizes', [1] * batch_size)[b]
-            
-            # Load concept sequence
-            concepts = concept_loader(video_name, start_frame, step_size, aggregation='combined')
-            logits_list.append(concepts)
-        
-        # Stack and reshape to match CLIP output format
-        logits_per_image = torch.cat(logits_list, dim=0)  # [batch_size * seq_len, num_concepts]
-        
-        return logits_per_image, None  # No text logits needed
-    
-    return concept_forward
