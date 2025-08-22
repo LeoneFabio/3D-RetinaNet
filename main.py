@@ -70,7 +70,7 @@ def main():
     #  data loading argumnets
     parser.add_argument('-b','--BATCH_SIZE', default=4, 
                         type=int, help='Batch size for training')
-    parser.add_argument('--TEST_BATCH_SIZE', default=1, 
+    parser.add_argument('--TEST_BATCH_SIZE', default=2, 
                         type=int, help='Batch size for testing')
     # Number of worker to load data in parllel
     parser.add_argument('--NUM_WORKERS', '-j', default=8, 

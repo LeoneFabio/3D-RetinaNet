@@ -149,7 +149,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     if si < seq_len - getattr(args, 'skip_ending', 0) or store_last:
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
-                    logger.info(f"Saving frame {frame_num+1} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
+                    logger.info(f"Saving frame {frame_num-step_size} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
 
             # Save batch concept logits tensor
             batch_save_name = os.path.join(batch_concepts_dir, f'batch_{val_itr:06d}_concepts.pt')
