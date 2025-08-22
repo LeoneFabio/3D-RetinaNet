@@ -79,7 +79,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             seq_len = ego_probs.shape[1]
             num_concepts = confidence.shape[-1]
 
-            logger.info(f'Concept extraction in progress, with {num_concepts} concepts, {batch_size} batches and {seq_len} sequence length.')
 
             # Initialize batch-level concept tensor
             batch_concept_logits = torch.zeros(batch_size, seq_len, num_concepts, device=images.device)
@@ -103,7 +102,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
 
                 batch_video_info.append({
                     'video_name': videoname,
-                    'frame_num': frame_num+1  # so that starts from 1
+                    'frame_start': frame_num+1  # it starts from 1 rather than 0
                 })
                 
                 # Track processed videos for consistency with gen_dets
@@ -150,7 +149,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     if si < seq_len - getattr(args, 'skip_ending', 0) or store_last:
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
-                logger.info(f"Saving frame {frame_num+1} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
+                    logger.info(f"Saving frame {frame_num+1} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
 
             # Save batch concept logits tensor
             batch_save_name = os.path.join(batch_concepts_dir, f'batch_{val_itr:06d}_concepts.pt')
