@@ -135,9 +135,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     cls_dets, save_data, frame_concept_logits = filter_detections_with_concepts(
                         args, scores, decoded_boxes_batch, confidence_batch
                     )
-
-                    # Store frame concept logits in batch tensor
-                    batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
                       
                     # Save in gen_dets format with added concept information
                     save_name = '{:s}/{:05d}.pkl'.format(save_dir, frame_num + 1)
@@ -153,6 +150,10 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     
                     # Save following gen_dets logic for sequence handling
                     if si < seq_len - getattr(args, 'skip_ending', 0) or store_last:
+                       
+                        # Store frame concept logits in batch tensor
+                        batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
+
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
                     logger.info(f"Saving frame {frame_num-step_size} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
