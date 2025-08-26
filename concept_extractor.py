@@ -63,6 +63,12 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     activation = torch.nn.Sigmoid().cuda()
     
     processed_videos = []
+
+    all_concepts = []
+    first_batch_info = None  
+    accumulated_seq_len = 0
+    target_seq_len = 240
+    chunk_idx = 0
     with torch.no_grad():
         for val_itr, (images, gt_boxes, gt_targets, ego_labels, batch_counts, img_indexs, wh) in enumerate(val_data_loader):
             
@@ -151,21 +157,59 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                             pickle.dump(complete_save_data, ff)
                     logger.info(f"Saving frame {frame_num-step_size} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
 
-            # Save batch concept logits tensor
+            
+            '''# Save batch concept logits tensor
             batch_save_name = os.path.join(batch_concepts_dir, f'batch_{val_itr:06d}_concepts.pt')
             torch.save({
                 'concepts': batch_concept_logits.cpu(),  # [batch_size, seq_len, num_concepts]
-                'batch_size': batch_size,
-                'seq_len': seq_len,
-                'num_concepts': num_concepts,
-                'batch_idx': val_itr,
+                'textual_concepts': val_dataset.concepts_labels,
+                'num_concepts': num_concepts-1,
                 'video_info': batch_video_info,  # Detailed info per batch element
                 'unique_videos': list(set([info['video_name'] for info in batch_video_info]))
-            }, batch_save_name)
+            }, batch_save_name)'''
+            
+            # Accumulate
+            all_concepts.append(batch_concept_logits.cpu())
+            accumulated_seq_len += seq_len
+
+            # Save info about first batch only once
+            if first_batch_info is None:
+                first_batch_info = {
+                    'textual_concepts': val_dataset.concepts_labels,
+                    'num_concepts': num_concepts - 1,
+                    'video_info': batch_video_info,
+                    'unique_videos': list(set([info['video_name'] for info in batch_video_info]))
+                }
+
+            # If 240 frames (total seq_len) reached
+            if accumulated_seq_len >= target_seq_len:
+                merged = torch.cat(all_concepts, dim=1)  # [batch_size, accumulated_seq_len, num_concepts]
+
+                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}_concepts.pt')
+                torch.save({
+                    'concepts': merged,
+                    **first_batch_info
+                }, batch_save_name)
+
+                logger.info(f"Saved chunk {chunk_idx} with shape {merged.shape} to {batch_save_name}")
+
+                # reset for next chunk
+                all_concepts = []
+                accumulated_seq_len = 0
+                chunk_idx += 1
 
             if val_itr % 10 == 0:
                 logger.info(f'Processed {val_itr + 1} batches')
     
+    # at the end, if there is any remaining data not multiple of 240
+    if all_concepts:
+        merged = torch.cat(all_concepts, dim=1)
+        batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}_concepts.pt')
+        torch.save({
+            'concepts': merged,
+            **first_batch_info
+        }, batch_save_name)
+        logger.info(f"Saved final chunk {chunk_idx} with shape {merged.shape} to {batch_save_name}")
     logger.info(f'Concept extraction completed. Saved to {concept_save_dir}')
     logger.info(f'Batch concept tensors saved to {batch_concepts_dir}')
 
