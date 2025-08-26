@@ -147,12 +147,14 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         'video_name': videoname,  # Video name
                         'concepts': val_dataset.concepts_labels,  # All concepts used in the video
                     }
+
+                    # Store frame concept logits in batch tensor
+                    batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
                     
                     # Save following gen_dets logic for sequence handling
                     if si < seq_len - getattr(args, 'skip_ending', 0) or store_last:
                        
-                        # Store frame concept logits in batch tensor
-                        batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
+                        
 
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
