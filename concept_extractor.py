@@ -170,7 +170,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             
             # Accumulate
             all_concepts.append(batch_concept_logits.cpu())
-            accumulated_seq_len += seq_len
+            accumulated_seq_len += seq_len - getattr(args, 'skip_ending', 0)
 
             # Save info about first batch only once
             if first_batch_info is None:
