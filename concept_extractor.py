@@ -106,10 +106,8 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     }
                 
                 # Track processed videos for gen_dets consistency
-                store_last = False
                 if videoname not in processed_videos:
                     processed_videos.append(videoname)
-                    store_last = True
                 
                 if not os.path.isdir(save_dir):
                     os.makedirs(save_dir)
@@ -148,8 +146,8 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         'concepts': val_dataset.concepts_labels,
                     }
                     
-                    # Save logic: save all frames except the last skip_ending frames, unless store_last=True
-                    should_save = si < effective_seq_len or store_last
+                    # Save logic: save all frames except the last skip_ending frames
+                    should_save = si < effective_seq_len
                     
                     if should_save:
                         with open(save_name, 'wb') as ff:
