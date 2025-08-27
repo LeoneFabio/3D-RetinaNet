@@ -106,16 +106,18 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     }
                 
                 # Track processed videos for gen_dets consistency
-                store_last = True
                 if videoname not in processed_videos:
                     processed_videos.append(videoname)
-                    store_last = False
+                    
 
                 if not os.path.isdir(save_dir):
                     os.makedirs(save_dir)
                 
                 # Process each frame in the sequence
                 current_frame_num = frame_num
+                store_last = False
+                if current_frame_num > 230:
+                    store_last = True
 
                 for si in range(seq_len):
                     
