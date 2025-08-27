@@ -183,6 +183,8 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     video_concepts[frame_num - 1] = concepts_dict[frame_num]  # Convert to 0-indexed
                 else:
                     logger.warning(f"Missing frame {frame_num} for video {videoname}")
+
+            
             
             # Save complete video
             video_save_path = os.path.join(batch_concepts_dir, f'{videoname}_240frames.pt')
@@ -242,7 +244,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 batch_tensor = torch.stack(batch_concepts, dim=0)  # [batch_size, 240, num_concepts]
                 
                 chunk_idx = len(batch_video_names) // args.TEST_BATCH_SIZE
-                batch_save_name = os.path.join(batch_concepts_dir, f'batch_240frames_{chunk_idx:03d}.pt')
+                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}.pt')
                 
                 torch.save({
                     'concepts': batch_tensor,  # [batch_size, 240, num_concepts]
@@ -264,7 +266,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     logger.info(f'Complete videos: {len(complete_videos)}')
     logger.info(f'Incomplete videos: {len(incomplete_videos)}')
     logger.info(f'Batch concept tensors saved to {batch_concepts_dir}')
-    
+
 '''
 def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     """
