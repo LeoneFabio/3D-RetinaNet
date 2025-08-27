@@ -116,8 +116,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 # Process each frame in the sequence
                 current_frame_num = frame_num
 
-                end = seq_len if current_frame_num < 234 else effective_seq_len
-                for si in range(end):
+                for si in range(seq_len):
 
                     # Extract frame-level data
                     decoded_boxes_batch = decoded_boxes[b, si]
@@ -148,9 +147,9 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         'video_name': videoname,
                         'concepts': val_dataset.concepts_labels,
                     }
-                    
-                    # Save logic: save all frames except the last skip_ending frames 
-                    should_save = si < effective_seq_len
+
+                    # Save logic: save all frames except the last skip_ending frames
+                    should_save = si < effective_seq_len and not ((frame_key == 233 and si == 0) or (frame_key == 234 and si == 1))
 
                     if should_save:
                         with open(save_name, 'wb') as ff:
