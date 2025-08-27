@@ -778,8 +778,7 @@ class VideoDataset(tutils.data.Dataset):
             # Build sequence sampling IDs 
             # For each step size, calculate the latest possible start frame
             for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1):
-                
-                max_start_frame = self.skip_step
+                max_start_frame = num_frames - self.skip_step
                 
                 if max_start_frame < 0:
                     continue  # Skip if step size is too large for this video
