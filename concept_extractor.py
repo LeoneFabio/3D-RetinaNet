@@ -81,7 +81,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             num_concepts = confidence.shape[-1]
             effective_seq_len = seq_len - getattr(args, 'skip_ending', 0)
 
-            logger.info(f'Processing batch {val_itr}: seq_len={seq_len}, effective_seq_len={effective_seq_len}')
+            #logger.info(f'Processing batch {val_itr}: seq_len={seq_len}, effective_seq_len={effective_seq_len}')
 
             # Process each sample in the batch
             for b in range(batch_size):
@@ -155,7 +155,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
                     
-                    logger.info(f"Frame {frame_key} (seq_idx {si}), video: {videoname}, saved: {should_save}")
+                    #logger.info(f"Frame {frame_key} (seq_idx {si}), video: {videoname}, saved: {should_save}")
                     
                     current_frame_num += step_size
 
