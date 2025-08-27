@@ -149,7 +149,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     }
 
                     # Save logic: save all frames except the last skip_ending frames
-                    should_save = si < effective_seq_len and not ((frame_key == 233 and si == 0) or (frame_key == 234 and si == 1))
+                    should_save = (frame_key > 238) or (si < effective_seq_len and not ((frame_key == 233 and si == 0) or (frame_key == 234 and si == 1)))
 
                     if should_save:
                         with open(save_name, 'wb') as ff:
