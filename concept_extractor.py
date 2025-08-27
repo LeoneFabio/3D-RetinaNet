@@ -231,6 +231,8 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         # Load all complete videos and stack them
         batch_concepts = []
         batch_video_names = []
+
+        batch_counter = 0 
         
         for videoname in complete_videos:
             video_path = os.path.join(batch_concepts_dir, f'{videoname}_240frames.pt')
@@ -243,8 +245,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 # Stack videos to create batch tensor
                 batch_tensor = torch.stack(batch_concepts, dim=0)  # [batch_size, 240, num_concepts]
                 
-                chunk_idx = len(batch_video_names) // args.TEST_BATCH_SIZE
-                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}.pt')
+                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{batch_counter:03d}.pt')
                 
                 torch.save({
                     'concepts': batch_tensor,  # [batch_size, 240, num_concepts]
@@ -260,6 +261,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 # Reset for next batch
                 batch_concepts = []
                 batch_video_names = []
+                batch_counter += 1
     
     # Summary
     logger.info(f'Concept extraction completed. Saved to {concept_save_dir}')
