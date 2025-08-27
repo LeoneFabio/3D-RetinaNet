@@ -766,7 +766,7 @@ class VideoDataset(tutils.data.Dataset):
                 for _ in range(num_frames)
             ])
 
-            # Build sequence sampling IDs
+            '''# Build sequence sampling IDs
             start_frames = list(range(0, num_frames - self.MIN_SEQ_STEP * self.SEQ_LEN, self.skip_step))
             for frame_num in start_frames:
                 step_list = [
@@ -774,7 +774,30 @@ class VideoDataset(tutils.data.Dataset):
                     if num_frames - s * self.SEQ_LEN >= frame_num
                 ]
                 for s in step_list[:self.num_steps]:
-                    self.ids.append([len(self.video_list) - 1, frame_num, s])
+                    self.ids.append([len(self.video_list) - 1, frame_num, s])'''
+            # Build sequence sampling IDs 
+            # For each step size, calculate the latest possible start frame
+            for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1):
+                # Latest start frame that allows a complete sequence of SEQ_LEN frames
+                # For 240 frames, we want the sequence to end at frame 240, so:
+                # start_frame + (SEQ_LEN-1)*step_size = 239 (0-indexed frame 240)
+                # Therefore: max_start_frame = 239 - (SEQ_LEN-1)*step_size = num_frames - 1 - (SEQ_LEN-1)*step_size
+                max_start_frame = num_frames - 1 - (self.SEQ_LEN - 1) * s
+                
+                if max_start_frame < 0:
+                    continue  # Skip if step size is too large for this video
+                
+                # Generate start frames with proper coverage
+                start_frames = list(range(0, max_start_frame + 1, self.skip_step))
+                
+                # Ensure the last possible start frame is included for complete coverage
+                if max_start_frame not in start_frames and max_start_frame >= 0:
+                    start_frames.append(max_start_frame)
+                
+                # Only use the first num_steps step sizes for each start frame
+                if s - self.MIN_SEQ_STEP < self.num_steps:
+                    for frame_num in start_frames:
+                        self.ids.append([len(self.video_list) - 1, frame_num, s])
 
         # Final metadata fields
         self.print_str = f"Comma dataset loaded. Num videos: {len(self.video_list)}, Num IDs: {len(self.ids)}\n"
