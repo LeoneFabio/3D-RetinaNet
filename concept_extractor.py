@@ -116,7 +116,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 current_frame_num = frame_num
                 
                 #if intermediate video batch end=seq_len, instead if last batch of the video end=effective_seq_len
-                end = seq_len if current_frame_num < 234 else effective_seq_len
+                end = seq_len if current_frame_num < 230 else effective_seq_len
 
                 for si in range(end):
                     
