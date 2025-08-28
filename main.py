@@ -233,6 +233,8 @@ def main():
         elif args.MODEL_TYPE != 'C2D':
             args.skip_beggning = 2
 
+        args.skip_beggning = 0
+        args.skip_ending = 0
         skip_step = args.SEQ_LEN - args.skip_beggning
 
 

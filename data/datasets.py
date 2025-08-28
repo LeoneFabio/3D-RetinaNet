@@ -766,16 +766,16 @@ class VideoDataset(tutils.data.Dataset):
                 for _ in range(num_frames)
             ])
 
-            '''# Build sequence sampling IDs
-            start_frames = list(range(0, num_frames - self.MIN_SEQ_STEP * self.SEQ_LEN, self.skip_step))
+            # Build sequence sampling IDs
+            start_frames = list(range(0, num_frames - self.MIN_SEQ_STEP * self.SEQ_LEN + 1, self.skip_step))
             for frame_num in start_frames:
                 step_list = [
                     s for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1)
                     if num_frames - s * self.SEQ_LEN >= frame_num
                 ]
                 for s in step_list[:self.num_steps]:
-                    self.ids.append([len(self.video_list) - 1, frame_num, s])'''
-            # Build sequence sampling IDs 
+                    self.ids.append([len(self.video_list) - 1, frame_num, s])
+            '''# Build sequence sampling IDs 
             # For each step size, calculate the latest possible start frame
             for s in range(self.MIN_SEQ_STEP, self.MAX_SEQ_STEP + 1):
                 # Latest start frame that allows a complete sequence of SEQ_LEN frames
@@ -797,7 +797,7 @@ class VideoDataset(tutils.data.Dataset):
                 # Only use the first num_steps step sizes for each start frame
                 if s - self.MIN_SEQ_STEP < self.num_steps:
                     for frame_num in start_frames:
-                        self.ids.append([len(self.video_list) - 1, frame_num, s])
+                        self.ids.append([len(self.video_list) - 1, frame_num, s])'''
 
         # Final metadata fields
         self.print_str = f"Comma dataset loaded. Num videos: {len(self.video_list)}, Num IDs: {len(self.ids)}\n"
@@ -815,7 +815,7 @@ class VideoDataset(tutils.data.Dataset):
         self.num_videos = len(self.video_list)
 
         logger.info(f"Building IDs with seq_len={self.SEQ_LEN}, skip_step={self.skip_step}")
-        logger.info(f"Num frames in {vid} = {num_frames}, start_frames={start_frames[:10]}... total {len(start_frames)}")
+        logger.info(f"Num frames in {vid} = {num_frames}, start_frames={start_frames[20:]}... total {len(start_frames)}")
 
 
 

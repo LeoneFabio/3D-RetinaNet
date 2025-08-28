@@ -150,12 +150,14 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
 
                     # Save logic: save all frames except the last skip_ending frames
                     should_save = (frame_key > 238) or (si < effective_seq_len and not ((frame_key == 233 and si == 0) or (frame_key == 234 and si == 1)))
+                    
+                    should_save = True  # For debugging, save all frames
 
                     if should_save:
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
                     
-                    #logger.info(f"Frame {frame_key} (seq_idx {si}), video: {videoname}, saved: {should_save}")
+                    logger.info(f"Frame {frame_key} (seq_idx {si}), video: {videoname}, saved: {should_save}")
                     
                     current_frame_num += step_size
 
