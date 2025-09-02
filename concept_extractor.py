@@ -1,13 +1,12 @@
 """
 Concept Extraction Module for 3D-RetinaNet to GridLock Integration
 
-This module modifies the existing gen_dets pipeline to extract concept representations
+This module extract concept representations
 that can replace CLIP in the GridLock model, while maintaining the same output format
 as gen_dets for consistency and debugging.
 """
 
 import os
-import time
 import torch
 import numpy as np
 import pickle
@@ -15,14 +14,15 @@ import torch.utils.data as data_utils
 from data import custom_collate_comma
 from data import custum_collate
 from modules import utils
-from modules.box_utils import decode, nms
+from modules.box_utils import nms
+from models.retinanet import build_retinanet
 
 logger = utils.get_logger(__name__)
 
 def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     """
     Extract concept representations from 3D-RetinaNet for GridLock integration.
-    Fixed version for 240-frame videos with proper sequence reconstruction.
+    Version with 240-frame videos with proper sequence reconstruction.
     
     Args:
         args: Argument namespace
@@ -31,7 +31,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
         output_dir: Directory to save concept representations
     
     Returns:
-        Saves detections + concept logits in gen_dets compatible format + reconstructed 240-frame sequences
+        Saves detections + concept logits 
     """
     collate_fn = custom_collate_comma if args.DATASET == 'comma' else custum_collate
 
@@ -80,8 +80,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             seq_len = ego_probs.shape[1]
             num_concepts = confidence.shape[-1]
             effective_seq_len = seq_len - getattr(args, 'skip_ending', 0)
-
-            #logger.info(f'Processing batch {val_itr}: seq_len={seq_len}, effective_seq_len={effective_seq_len}')
 
             # Process each sample in the batch
             for b in range(batch_size):
@@ -154,8 +152,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                     if should_save:
                         with open(save_name, 'wb') as ff:
                             pickle.dump(complete_save_data, ff)
-                    
-                    logger.info(f"Frame {frame_key} (seq_idx {si}), video: {videoname}, saved: {should_save}")
                     
                     current_frame_num += step_size
 
@@ -269,202 +265,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
     logger.info(f'Incomplete videos: {len(incomplete_videos)}')
     logger.info(f'Batch concept tensors saved to {batch_concepts_dir}')
 
-'''
-def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
-    """
-    Extract concept representations from 3D-RetinaNet for GridLock integration.
-    Maintains the same output format as gen_dets but adds concept logits.
-    
-    Args:
-        args: Argument namespace
-        net: Trained 3D-RetinaNet model
-        val_dataset: Dataset (e.g., Comma2k19)
-        output_dir: Directory to save concept representations
-    
-    Returns:
-        Saves detections + concept logits in gen_dets compatible format + per batch logits
-    """
-    collate_fn = custom_collate_comma if args.DATASET == 'comma' else custum_collate
-
-    net.eval()
-    val_data_loader = data_utils.DataLoader(
-        val_dataset, int(args.TEST_BATCH_SIZE), num_workers=args.NUM_WORKERS,
-        shuffle=False, pin_memory=True, collate_fn=collate_fn
-    )
-    
-    # Load trained model weights
-    epoch = int(args.EVAL_EPOCHS[0])
-    args.MODEL_PATH = args.SAVE_ROOT + 'model_{:06d}.pth'.format(epoch)
-    net.load_state_dict(torch.load(args.MODEL_PATH))
-    logger.info('Loaded model from %s' % args.MODEL_PATH)
-    
-    # Setup save directory similar to gen_dets
-    concept_save_dir = os.path.join(output_dir, "concepts-{it:02d}-{sq:02d}/".format(
-        it=epoch, sq=args.TEST_SEQ_LEN))
-    os.makedirs(concept_save_dir, exist_ok=True)
-    logger.info('Concept extraction saving dir: ' + concept_save_dir)
-
-
-    # Setup batch concept tensors save directory
-    batch_concepts_dir = os.path.join(output_dir, "batch_concepts-{it:02d}-{sq:02d}/".format(
-        it=epoch, sq=args.TEST_SEQ_LEN))
-    os.makedirs(batch_concepts_dir, exist_ok=True)
-    logger.info('Batch concept tensors saving dir: ' + batch_concepts_dir)
-    
-    activation = torch.nn.Sigmoid().cuda()
-    
-    processed_videos = []
-
-    all_concepts = []
-    first_batch_info = None  
-    accumulated_seq_len = 0
-    target_seq_len = 240
-    chunk_idx = 0
-    with torch.no_grad():
-        for val_itr, (images, gt_boxes, gt_targets, ego_labels, batch_counts, img_indexs, wh) in enumerate(val_data_loader):
-            
-            batch_size = images.size(0)
-            images = images.cuda(0, non_blocking=True)
-            
-            # Forward pass - get raw outputs
-            decoded_boxes, flat_conf, ego_preds = net(images)
-            
-            # Apply activation to get probabilities
-            confidence = activation(flat_conf)  # [batch, seq_len, num_anchors, num_classes]
-            ego_probs = activation(ego_preds)   # [batch, seq_len, num_ego_classes]
-            
-            seq_len = ego_probs.shape[1]
-            num_concepts = confidence.shape[-1]
-
-
-            # Initialize batch-level concept tensor
-            batch_concept_logits = torch.zeros(batch_size, seq_len, num_concepts, device=images.device)
-            
-            # Collect video information for this batch
-            batch_video_info = []
-
-            # Process each sample in the batch
-            for b in range(batch_size):
-                index = img_indexs[b]
-                annot_info = val_dataset.ids[index]
-                
-                if args.DATASET != 'ava':
-                    video_id, frame_num, step_size = annot_info
-                else:
-                    video_id, frame_num, step_size, keyframe = annot_info
-                    frame_num = keyframe - 1
-                
-                videoname = val_dataset.video_list[video_id]
-                save_dir = '{:s}/{}'.format(concept_save_dir, videoname)
-
-                batch_video_info.append({
-                    'video_name': videoname,
-                    'frame_start': frame_num+1  # it starts from 1 rather than 0
-                })
-                
-                # Track processed videos for consistency with gen_dets
-                store_last = False
-                if videoname not in processed_videos:
-                    processed_videos.append(videoname)
-                    store_last = True
-                
-                if not os.path.isdir(save_dir):
-                    os.makedirs(save_dir)
-                
-                # Process each frame in the sequence
-                for si in range(seq_len):
-                    
-                    # Extract frame-level data
-                    decoded_boxes_batch = decoded_boxes[b, si]
-                    confidence_batch = confidence[b, si]  # [num_anchors, num_classes]
-                    ego_frame = ego_probs[b, si, :].cpu().numpy()
-                    
-                    # Get detection scores and apply filtering (similar to gen_dets)
-                    scores = confidence_batch[:, 0].squeeze().clone()  # Use first class as objectness
-                    
-                    # Filter detections and get concept logits
-                    cls_dets, save_data, frame_concept_logits = filter_detections_with_concepts(
-                        args, scores, decoded_boxes_batch, confidence_batch
-                    )
-                      
-                    # Save in gen_dets format with added concept information
-                    save_name = '{:s}/{:05d}.pkl'.format(save_dir, frame_num + 1)
-                    frame_num += step_size
-                    
-                    # Create save data with same structure as gen_dets
-                    complete_save_data = {
-                        'ego': ego_frame,
-                        'main': save_data,  # Contains boxes + confidence + concept logits
-                        'video_name': videoname,  # Video name
-                        'concepts': val_dataset.concepts_labels,  # All concepts used in the video
-                    }
-
-                    # Store frame concept logits in batch tensor
-                    batch_concept_logits[b, si] = torch.from_numpy(frame_concept_logits).to(images.device)
-                    
-                    # Save following gen_dets logic for sequence handling
-                    if si < seq_len - getattr(args, 'skip_ending', 0) or store_last:
-                       
-                        with open(save_name, 'wb') as ff:
-                            pickle.dump(complete_save_data, ff)
-                    logger.info(f"Saving frame {frame_num-step_size+1} (seq index {si}), will_save={si < seq_len - getattr(args, 'skip_ending', 0) or store_last}")
-
-            
-            """# Save batch concept logits tensor
-            batch_save_name = os.path.join(batch_concepts_dir, f'batch_{val_itr:06d}_concepts.pt')
-            torch.save({
-                'concepts': batch_concept_logits.cpu(),  # [batch_size, seq_len, num_concepts]
-                'textual_concepts': val_dataset.concepts_labels,
-                'num_concepts': num_concepts-1,
-                'video_info': batch_video_info,  # Detailed info per batch element
-                'unique_videos': list(set([info['video_name'] for info in batch_video_info]))
-            }, batch_save_name)"""
-            
-            # Accumulate
-            all_concepts.append(batch_concept_logits.cpu())
-            accumulated_seq_len += seq_len 
-
-            # Save info about first batch only once
-            if first_batch_info is None:
-                first_batch_info = {
-                    'textual_concepts': val_dataset.concepts_labels,
-                    'num_concepts': num_concepts - 1,
-                    'video_info': batch_video_info,
-                    'unique_videos': list(set([info['video_name'] for info in batch_video_info]))
-                }
-
-            # If 240 frames (total seq_len) reached
-            if accumulated_seq_len >= target_seq_len:
-                merged = torch.cat(all_concepts, dim=1)  # [batch_size, accumulated_seq_len, num_concepts]
-
-                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}_concepts.pt')
-                torch.save({
-                    'concepts': merged,
-                    **first_batch_info
-                }, batch_save_name)
-
-                logger.info(f"Saved chunk {chunk_idx} with shape {merged.shape} to {batch_save_name}")
-
-                # reset for next chunk
-                all_concepts = []
-                accumulated_seq_len = 0
-                chunk_idx += 1
-
-            if val_itr % 10 == 0:
-                logger.info(f'Processed {val_itr + 1} batches')
-    
-    # at the end, if there is any remaining data not multiple of 240
-    if all_concepts:
-        merged = torch.cat(all_concepts, dim=1)
-        batch_save_name = os.path.join(batch_concepts_dir, f'batch_{chunk_idx:03d}_concepts.pt')
-        torch.save({
-            'concepts': merged,
-            **first_batch_info
-        }, batch_save_name)
-        logger.info(f"Saved final chunk {chunk_idx} with shape {merged.shape} to {batch_save_name}")
-    logger.info(f'Concept extraction completed. Saved to {concept_save_dir}')
-    logger.info(f'Batch concept tensors saved to {batch_concepts_dir}')
-'''
 
 def filter_detections_with_concepts(args, scores, decoded_boxes_batch, confidences):
     """
@@ -553,27 +353,19 @@ def extract_frame_level_concepts(final_confidences):
     return frame_concepts
 
 
-# Modified main function integration
-def add_concept_extraction_mode(args, val_dataset):
+
+def extract_concepts(args, val_dataset):
     """
-    Add concept extraction mode to the existing main.py argument parser.
-    
-    This should be integrated into your main.py file.
+    Concept extraction mode integration
+
     """
+    # Build and load model
+    net = build_retinanet(args).cuda()
+    if args.MULTI_GPUS:
+        logger.info('\nLets do dataparallel\n')
+        net = torch.nn.DataParallel(net)
     
-    if args.MODE == 'extract_concepts':
-        from models.retinanet import build_retinanet
-        
-        # Build and load model
-        net = build_retinanet(args).cuda()
-        if args.MULTI_GPUS:
-            logger.info('\nLets do dataparallel\n')
-            net = torch.nn.DataParallel(net)
-        
-        # Extract concepts
-        output_dir = args.SAVE_ROOT
-        extract_concepts_for_gridlock(args, net, val_dataset, output_dir)
-        
-        return True  # Indicates concept extraction was performed
-    
-    return False  # Continue with normal processing
+    # Extract concepts
+    output_dir = args.SAVE_ROOT
+    extract_concepts_for_gridlock(args, net, val_dataset, output_dir)
+ 

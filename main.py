@@ -13,7 +13,7 @@ from models.retinanet import build_retinanet
 from gen_dets import gen_dets, eval_framewise_dets
 from tubes import build_eval_tubes
 from val import val
-from concept_extractor import add_concept_extraction_mode
+from concept_extractor import extract_concepts
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -233,8 +233,8 @@ def main():
         elif args.MODEL_TYPE != 'C2D':
             args.skip_beggning = 2
 
-        args.skip_beggning = 4
-        args.skip_ending = 4
+        args.skip_beggning = 0
+        args.skip_ending = 0
         skip_step = args.SEQ_LEN - args.skip_beggning
 
 
@@ -285,9 +285,8 @@ def main():
     elif args.MODE == 'eval_tubes':
         build_eval_tubes(args, val_dataset)
     elif args.MODE == 'extract_concepts':
-        if add_concept_extraction_mode(args, val_dataset):
-            build_eval_tubes(args, val_dataset, evaluate=False)
-            return  # Concept extraction completed
+        extract_concepts(args, val_dataset)
+        build_eval_tubes(args, val_dataset, evaluate=False)
     
 
 if __name__ == "__main__":
