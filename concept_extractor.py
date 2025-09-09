@@ -183,7 +183,7 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
             
             
             # Save complete video
-            video_save_path = os.path.join(batch_concepts_dir, f'{videoname}_240frames.pt')
+            video_save_path = os.path.join(batch_concepts_dir, f'{videoname}.pt')
             torch.save({
                 'concepts': torch.from_numpy(video_concepts),  # [240, num_concepts]
                 'video_name': videoname,
@@ -219,45 +219,6 @@ def extract_concepts_for_gridlock(args, net, val_dataset, output_dir):
                 'frame_coverage': len(frames_collected),
                 'missing_frames': set(range(1, max_frame + 1)) - frames_collected
             }, video_save_path)
-    
-    # Create batch-style tensor from complete videos
-    if complete_videos:
-        logger.info(f"Creating batch tensor from {len(complete_videos)} complete videos...")
-        
-        # Load all complete videos and stack them
-        batch_concepts = []
-        batch_video_names = []
-
-        batch_counter = 0 
-        
-        for videoname in complete_videos:
-            video_path = os.path.join(batch_concepts_dir, f'{videoname}_240frames.pt')
-            video_data = torch.load(video_path)
-            batch_concepts.append(video_data['concepts'])  # [240, num_concepts]
-            batch_video_names.append(videoname)
-            
-            # Create chunks of videos for batch processing
-            if len(batch_concepts) == args.TEST_BATCH_SIZE or videoname == complete_videos[-1]:
-                # Stack videos to create batch tensor
-                batch_tensor = torch.stack(batch_concepts, dim=0)  # [batch_size, 240, num_concepts]
-                
-                batch_save_name = os.path.join(batch_concepts_dir, f'batch_{batch_counter:03d}.pt')
-                
-                torch.save({
-                    'concepts': batch_tensor,  # [batch_size, 240, num_concepts]
-                    'video_names': batch_video_names.copy(),
-                    'batch_size': batch_tensor.shape[0],
-                    'seq_len': 240,
-                    'num_concepts': num_concepts,
-                    'textual_concepts': val_dataset.concepts_labels
-                }, batch_save_name)
-                
-                logger.info(f"Saved batch tensor with shape {batch_tensor.shape}: {batch_save_name}")
-                
-                # Reset for next batch
-                batch_concepts = []
-                batch_video_names = []
-                batch_counter += 1
     
     # Summary
     logger.info(f'Concept extraction completed. Saved to {concept_save_dir}')
@@ -341,12 +302,6 @@ def extract_frame_level_concepts(final_confidences):
     
     # Aggregate using max pooling
     frame_concepts_max = torch.max(final_confidences, dim=0)[0]
-    
-    # Alternative: weighted average
-    detection_weights = torch.softmax(final_confidences.max(dim=1)[0], dim=0)
-    frame_concepts_weighted = torch.sum(
-        final_confidences * detection_weights.unsqueeze(1), dim=0
-    )
     
     frame_concepts = frame_concepts_max.cpu().numpy()
     
