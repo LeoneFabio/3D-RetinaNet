@@ -40,7 +40,7 @@ Since inference relies on concepts learned from ROAD, you must also download the
 
 After installing the dataset and the JSON file, data directory should look like:
 
-  ```
+  ```bash
   - {DATASET_PATH}/
       - comma/
           road_trainval_v1.0.json
@@ -77,15 +77,18 @@ To run inference, use the main script `main.py` and specify parameters via flags
 
 Example run:
 
-```
-  python main.py \
-  {DATASET_PATH} \
-  {SAVE_PATH} \
-  --DATASET=comma --MODE=extract_concepts \
-  --TEST_SEQ_LEN=8  \
-  --TEST_BATCH_SIZE=2 --NUM_WORKERS=4 
+```bash
+python main.py \
+{DATASET_PATH} \
+{SAVE_PATH} \
+--DATASET=comma --MODE=extract_concepts \
+--TEST_SEQ_LEN=8  \
+--TEST_BATCH_SIZE=2 --NUM_WORKERS=4 
 ```
 
+### Demo on Kaggle
+
+For convenience, we provide a Jupyter Notebook [`demo_run.ipynb`](./demo_run.ipynb) that demonstrates how to run inference on the **comma2k19** dataset using the Kaggle platform.
 
 ### Notes on Inference
 
@@ -160,7 +163,7 @@ You can then reconstruct a video for qualitative inspection, for example:
 ffmpeg -framerate 10 -i {OUTPUT_FOLDER}/%05d.jpg OUTPUT_VIDEONAME.mp4
 ```
 
-This produces a video where road events are clearly visualized as evolving tubes across time, as shown in `qualitative_results/plotted_road_events.mp4`.
+This produces a video where road events are clearly visualized as evolving tubes across time, as shown in [plotted_road_events.mp4](./qualitative_results/plotted_road_events.mp4).
 
 ---
 
